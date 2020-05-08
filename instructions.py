@@ -91,6 +91,7 @@ def sw(registers,data_segment,reg1,reg2,shift,outlist):
 	n=int(n)
 	data_segment[n]=registers[reg1]
 def li(registers,reg1,value):
+	print("************")
 	registers[reg1]=value
 def sll(registers,reg1,reg2,shift):
 	registers[reg1]=registers[reg2]<<shift

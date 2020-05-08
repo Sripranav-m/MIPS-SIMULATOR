@@ -39,6 +39,8 @@ sub_menubar1.add_command(label="open",command=open_file)
 path_of_file=""
 registers=[0]*32
 data_segment_=[]
+cache_l1=[0]*10
+cache_l1=[0]*100
 
 cycles=0
 ipc=0
@@ -184,6 +186,9 @@ def simulate(path_of_file,registers,data_segment_,stalls,n_ins):
 			for ii in range(0,len(register_name)):
 				register_name[ii]="".join(register_name[ii].split())
 			name=instructions.get_reg_number(register_name[0][:-1],int(register_name[0][-1]))
+			print(registers)
+			print(int(name))
+			print(register_name)
 			instructions.li(registers,int(name),int(register_name[1]))
 		elif instruction=="add" or instruction=="sub" or instruction=="slt":
 			n_ins+=1
@@ -283,7 +288,8 @@ def simulate(path_of_file,registers,data_segment_,stalls,n_ins):
 			name=instructions.get_reg_number(register_name[0][:-1],int(register_name[0][-1]))
 			name=int(name)
 			#####
-			dep_reg=name
+			if instruction=="lw":
+				dep_reg=name
 			#####
 			s=register_name[1].split("(",1)[0]
 			s=int(s)
