@@ -2,6 +2,7 @@ import sys
 import instructions
 import tkinter
 from tkinter.filedialog import askopenfile
+import math
 
 window=tkinter.Tk()
 window.title("MIPS SIMULATOR")
@@ -27,7 +28,9 @@ def run_program():
 	global path_of_file
 	global stalls
 	global n_ins
-	simulate(path_of_file,registers,data_segment_,stalls,n_ins)
+	global n_m_c1
+	global n_m_c2
+	simulate(path_of_file,registers,data_segment_,stalls,n_ins,n_m_c1,n_m_c2,total_memory_ins,hit_c1,hit_c2)
 
 menubar=tkinter.Menu(window)
 window.config(menu=menubar)
@@ -42,6 +45,13 @@ data_segment_=[]
 cache_l1=[0]*10
 cache_l1=[0]*100
 
+
+n_m_c1=[0]
+n_m_c2=[0]
+hit_c1=[0]
+hit_c2=[0]
+
+total_memory_ins=0
 cycles=0
 ipc=0
 stalls=0
@@ -66,9 +76,43 @@ for i in range(0,32):
 	data_heading=tkinter.Label(window,text="data segment")
 	data_heading.grid(column=5,row=0)
 
-def simulate(path_of_file,registers,data_segment_,stalls,n_ins):
-	data_segment_=[]        
-	registers=[0]*32		
+
+	
+
+def simulate(path_of_file,registers,data_segment_,stalls,n_ins,n_m_c1,n_m_c2,total_memory_ins,hit_c1,hit_c2):
+	################## data of cache 1 ####################
+
+	set_size = 2 #int(input("Enter set associativity: "))
+	cache_size = 32 #int(input("Enter cache size: "))
+	block_size = 4 #int(input("Enter block size: "))
+
+	num_of_lines = cache_size/block_size
+
+	num_of_sets = int(num_of_lines/set_size)
+
+	num_of_block_words = int(block_size/4)
+
+
+	######### data of cache2 ##############
+
+	set_size_2 = 2 #int(input("Enter set associativity of cache 2: "))
+	cache_size_2 =  32 #int(input("Enter cache size of cache 2: "))
+
+	num_of_lines_2 = int(cache_size_2 / block_size)
+	num_of_sets_2 = int(num_of_lines_2 / set_size_2)
+
+
+	cache1 = [[[[""] for k in range(num_of_block_words)] for j in range(set_size)] for i in range(num_of_sets)]
+
+	cache2 = [[[[""] for k in range(num_of_block_words)] for j in range(set_size_2)] for i in range(num_of_sets_2)]
+
+	n_m_c1=[0]
+	n_m_c2=[0]
+	hit_c1=[0]
+	hit_c2=[0]
+	data_segment_=[]
+	registers=[0]*32
+
 	line_number=0			
 	asm_file=open(path_of_file,'r')										
 	number_of_lines=0			
@@ -238,9 +282,9 @@ def simulate(path_of_file,registers,data_segment_,stalls,n_ins):
 				r="".join(r.split())
 				r=instructions.get_reg_number(r[:-1],int(r[-1]))
 				if instruction=="lw":
-					instructions.lw(registers,data_segment_,name,r,s,outlist)
+					instructions.lw(hit_c1,hit_c2,n_m_c1,n_m_c2,registers,data_segment_,name,r,s,outlist,cache1,cache2,num_of_sets,num_of_block_words,num_of_sets_2,num_of_lines_2,num_of_lines)
 				elif instruction=="sw":
-					instructions.sw(registers,data_segment_,name,r,s,outlist)
+					instructions.sw(hit_c1,hit_c2,n_m_c1,n_m_c2,registers,data_segment_,name,r,s,outlist,cache1,cache2,num_of_sets,num_of_block_words,num_of_sets_2,num_of_lines_2,num_of_lines)
 			p4_p5[0]=p3_p4[2]
 			p4_p5[1]=p3_p4[3]
 			p4_p5[2]=p3_p4[4]
@@ -400,6 +444,7 @@ def simulate(path_of_file,registers,data_segment_,stalls,n_ins):
 					dep_reg=-1
 		
 			elif instruction=="lw" or instruction=="sw":
+				total_memory_ins+=1
 				n_ins+=1
 				register_name=asm_file_lines[i-1].split(" ",1)[1][:-1]
 				
@@ -498,15 +543,36 @@ def simulate(path_of_file,registers,data_segment_,stalls,n_ins):
 		s=tkinter.Label(window,text=data_segment_[ki])
 		s.grid(column=6,row=ki+1)
 	print("********************************")
+	l_c1=1
+	l_c2=10
+	l_ram=100
+	mrc1=n_m_c1[0]/total_memory_ins
+	mrc2=n_m_c2[0]/total_memory_ins
+	mat=(hit_c1[0])*(l_c1)+(hit_c2[0])*(l_c2)+(total_memory_ins-hit_c1[0]-hit_c2[0])*(l_ram)
+	cycles=n_ins+4+stalls-total_memory_ins+mat
+	stalls_total=cycles-n_ins-4
+	amat=mat/total_memory_ins
 	print("NUMBER OF STALLS:",end=" ")
-	print(stalls)
+	print(stalls_total)
 	print("NUMBER OF INSTRUCTIONS:",end=" ")
 	print(n_ins)
-	cycles=n_ins+4+stalls
 	print("NUMBER OF CYCLES:",end=" ")
 	print(cycles)
 	print("IPC:",end=" ")
 	print(n_ins/cycles)
+	print("NUMBER OF MISSES IN CACHE 1:",end=" ")
+	print(n_m_c1[0])
+	print("NUMBER OF MISSES IN CACHE 2:",end=" ")
+	print(n_m_c2[0])
+	print("MISS RATE OF CACHE 1:",end=" ")
+	print(mrc1)
+	print("MISS RATE OF CACHE 2:",end=" ")
+	print(mrc2)
+	print("AVERAGE MEMORY ACCESS TIME (AMAT) :",end="  ")
+	print(amat)
+	print("MEMORY ACCESS TIME (AMAT) :",end="  ")
+	print(mat)
+
 	print("********************************")
 def display_in_gui():
 	pass

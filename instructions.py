@@ -1,5 +1,38 @@
 import sys
 
+import math
+
+def divide_address(address, num_of_sets, num_of_block_words):
+	
+	div_add = []
+
+	num_bits_offset = int(math.log2(num_of_block_words))
+	num_bits_index = int(math.log2(num_of_sets))
+
+	div_add.append(address[0 : (len(address) - (num_bits_index + num_bits_offset)) ])
+	div_add.append(address[len(address) - (num_bits_index + num_bits_offset)  : len(address) - num_bits_offset])
+	if(num_bits_offset == 0 ):
+		div_add.append('')
+	else:
+		div_add.append(address[ -(num_bits_offset):])
+
+	return div_add
+
+def cache_insert(cache1, address_list,num_of_lines,num_of_sets):
+	if(len(cache1[int(address_list[1],2)]) < ( num_of_lines / num_of_sets)):
+		cache1[int(address_list[1],2)].insert(0, [address_list])
+	else:
+		cache1[int(address_list[1],2)].pop()
+		cache1[int(address_list[1],2)].insert(0,[address_list])
+
+def cache2_insert(cache2, address_list,num_of_lines_2,num_of_sets_2):
+	if(len(cache2[int(address_list[1],2)]) < ( num_of_lines_2 / num_of_sets_2)):
+		cache2[int(address_list[1],2)].insert(0, [address_list])
+	else:
+		cache2[int(address_list[1],2)].pop(-1)
+		cache2[int(address_list[1],2)].insert(0,[address_list])
+
+
 	
 def get_reg_number(reg_alpha,reg_number):
 	if reg_alpha=="$s":
@@ -76,20 +109,116 @@ def la(registers,data_segment,reg1,name,outlist):
 	n=data_segment.index(name)
 	registers[reg1]=n+1
 	outlist[reg1]=n+1
-def lw(registers,data_segment,reg1,reg2,shift,outlist):
+def lw(hits_c1,hits_c2,number_of_misses_cache1,number_of_misses_cache2,registers,data_segment_,reg1,reg2,shift,outlist,cache1,cache2,num_of_sets,num_of_block_words,num_of_sets_2,num_of_lines_2,num_of_lines):
 	n=registers[reg2]-outlist[reg2]
 	n=n/4
 	n+=(shift/4)
 	n+=outlist[reg2]
 	n=int(n)
-	registers[reg1]=data_segment[n]
-def sw(registers,data_segment,reg1,reg2,shift,outlist):
+
+	x=(n-1)*4
+	address = '{:032b}'.format(x)
+	divided_address = divide_address(address, num_of_sets, num_of_block_words)
+	cach1_fl = 0
+	cach2_fl = 0
+	num_of_misses = 0
+	for i in range(	len(cache1[int(divided_address[1],2)]) ):
+		if(cache1[int(divided_address[1],2)][i] != [['']]):
+			if(int(cache1[int(divided_address[1],2)][i][0][0],2) == int(divided_address[0],2)):
+				print("It is a hit in cache 1")
+				hits_c1[0]+=1
+				cach1_fl = 1
+				cache1[int(divided_address[1],2)].insert(0, cache1[int(divided_address[1],2)].pop(i))
+
+	if cach1_fl == 0:
+		print("It is a miss in cache1: ")
+		number_of_misses_cache1[0]+=1
+		print("**")
+		cache2_divided_address = divide_address(address, num_of_sets_2, num_of_block_words)
+		
+		cache1_divided_address = divide_address(address, num_of_sets, num_of_block_words)
+
+		for i in range( len ( cache2[ int( cache2_divided_address[1], 2) ])) :
+			if(cache2[ int(cache2_divided_address[1], 2)][i] != [['']]) :
+				if( int(cache2[int(cache2_divided_address[1],2)][i][0][0],2) == int(cache2_divided_address[0],2) ) :
+					print("It's a hit in cache 2")
+					hits_c2[0]+=1
+					cach2_fl = 1
+					cache_insert(cache1, cache2[int(cache1_divided_address[1], 2)][i][0])
+					cache2[int(divided_address[1],2)].insert(0, cache1[int(divided_address[1],2)].pop(i))                    
+
+		if(cach2_fl == 0):
+			print("It's a miss in cache 2")
+			number_of_misses_cache2[0]+=1
+			print("**")
+			from_data_segment = x
+
+			data_segment = '{:032b}'.format(from_data_segment)
+			data_segment_list = divide_address(data_segment, num_of_sets, num_of_block_words)
+			cache2_insert(cache2, data_segment_list,num_of_lines_2,num_of_sets_2)
+			cache_insert(cache1, data_segment_list,num_of_lines,num_of_sets)
+
+	registers[reg1]=data_segment_[n]
+	print(cache1)
+	print(cache2)
+
+def sw(hits_c1,hits_c2,number_of_misses_cache1,number_of_misses_cache2,registers,data_segment_,reg1,reg2,shift,outlist,cache1,cache2,num_of_sets,num_of_block_words,num_of_sets_2,num_of_lines_2,num_of_lines):
 	n=registers[reg2]-outlist[reg2]
 	n=n/4
 	n+=(shift/4)
 	n+=outlist[reg2]
 	n=int(n)
-	data_segment[n]=registers[reg1]
+
+	x=(n-1)*4
+	address = '{:032b}'.format(x)
+	divided_address = divide_address(address, num_of_sets, num_of_block_words)
+	cach1_fl = 0
+	cach2_fl = 0
+	num_of_misses = 0
+	for i in range(	len(cache1[int(divided_address[1],2)]) ):
+		if(cache1[int(divided_address[1],2)][i] != [['']]):
+			if(int(cache1[int(divided_address[1],2)][i][0][0],2) == int(divided_address[0],2)):
+				print("It is a hit in cache 1")
+				hits_c1[0]+=1
+				cach1_fl = 1
+				cache1[int(divided_address[1],2)].insert(0, cache1[int(divided_address[1],2)].pop(i))
+
+	if cach1_fl == 0:
+		print("It is a miss in cache1: ")
+		number_of_misses_cache1[0]+=1
+		print("**")
+
+		cache2_divided_address = divide_address(address, num_of_sets_2, num_of_block_words)
+		
+		cache1_divided_address = divide_address(address, num_of_sets, num_of_block_words)
+
+		for i in range( len ( cache2[ int( cache2_divided_address[1], 2) ])) :
+			if(cache2[ int(cache2_divided_address[1], 2)][i] != [['']]) :
+				if( int(cache2[int(cache2_divided_address[1],2)][i][0][0],2) == int(cache2_divided_address[0],2) ) :
+					print("It's a hit in cache 2")
+					hits_c2[0]+=1
+					cach2_fl = 1
+					cache_insert(cache1, cache2[int(cache1_divided_address[1], 2)][i][0])
+					cache2[int(divided_address[1],2)].insert(0, cache1[int(divided_address[1],2)].pop(i))                    
+
+		if(cach2_fl == 0):
+			print("It's a miss in cache 2")
+			number_of_misses_cache2[0]+=1
+			print("**")
+			from_data_segment = x
+
+			data_segment = '{:032b}'.format(from_data_segment)
+
+			data_segment_list = divide_address(data_segment, num_of_sets, num_of_block_words)
+
+			cache2_insert(cache2, data_segment_list,num_of_lines_2,num_of_sets_2)
+			cache_insert(cache1, data_segment_list,num_of_lines,num_of_sets)
+
+	
+	data_segment_[n]=registers[reg1]
+	print(cache1)
+	print(cache2)
+
 def li(registers,reg1,value):
 	print("************")
 	registers[reg1]=value
